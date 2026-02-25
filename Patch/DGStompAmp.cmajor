@@ -1,0 +1,321 @@
+/*
+  ==============================================================================
+  DGStompAmp.cmajor — Yamaha DG Stomp amp simulator
+  Allan Holdsworth Lead & Clean patches (20 total)
+
+  Self-Audit:
+  - ✓ No double or C++ types — float64 only for phase accumulators
+  - ✓ Parameters use param1..param10
+  - ✓ Event handler exists for each parameter
+  - ✓ No function definitions inside main/event
+  - ✓ float(...) casts used for math
+  - ✓ out <- and advance() present
+  - ✓ All counters/indices initialized
+  - ✓ Helper functions at processor scope only
+  ==============================================================================
+*/
+
+processor DGStompAmp
+{
+    input  stream float<2> in;
+    output stream float<2> out;
+
+    input event float param1  [[ name: "Patch",      min: 1,    max: 20,   init: 1,    step: 1   ]];
+    input event float param2  [[ name: "Drive",       min: 0,    max: 10,   init: 5.0             ]];
+    input event float param3  [[ name: "Bass",        min: 0,    max: 10,   init: 5.0             ]];
+    input event float param4  [[ name: "Middle",      min: 0,    max: 10,   init: 5.0             ]];
+    input event float param5  [[ name: "Treble",      min: 0,    max: 10,   init: 5.0             ]];
+    input event float param6  [[ name: "Presence",    min: 0,    max: 10,   init: 5.0             ]];
+    input event float param7  [[ name: "Master Vol",  min: 0,    max: 10,   init: 7.0             ]];
+    input event float param8  [[ name: "Cabinet Sim", min: 0,    max: 1,    init: 1,    step: 1   ]];
+    input event float param9  [[ name: "Noise Gate",  min: 0,    max: 1,    init: 0.02            ]];
+    input event float param10 [[ name: "Bright",      min: 0,    max: 1,    init: 0,    step: 1   ]];
+
+    // ── Parameter state ───────────────────────────────────────────────────────
+    float drive      = 5.0f;
+    float bass       = 5.0f;
+    float midVal     = 5.0f;
+    float treble     = 5.0f;
+    float presence   = 5.0f;
+    float masterVol  = 7.0f;
+    float cabOn      = 1.0f;
+    float gateThresh = 0.02f;
+    float brightOn   = 0.0f;
+
+    // Patch lookup tables — drive,bass,mid,treble,presence,master,bright
+    float[20] pDrive;   float[20] pBass;  float[20] pMid;
+    float[20] pTreble;  float[20] pPres;  float[20] pMast;  float[20] pBrt;
+
+    // ── Filter states ─────────────────────────────────────────────────────────
+    float s1hpL=0; float s1hpR=0; float s1lpL=0; float s1lpR=0;
+    float s2hpL=0; float s2hpR=0; float s2lpL=0; float s2lpR=0;
+    float s3hpL=0; float s3hpR=0; float s3lpL=0; float s3lpR=0;
+    float tBassL=0; float tBassR=0;
+    float tMidL=0;  float tMidR=0;
+    float tTrebL=0; float tTrebR=0;
+    float tPresL=0; float tPresR=0;
+    float brightSL=0; float brightSR=0;
+    float sagEnvL=0;  float sagEnvR=0;
+    float gateEnvL=0; float gateEnvR=0;
+
+    // Cabinet IR — 64-tap Celestion V30 1x12 open-back model
+    float[64] cabIR;
+    float[64] cabBufL;
+    float[64] cabBufR;
+    int cabWr = 0;
+
+    // ── Event handlers ────────────────────────────────────────────────────────
+    event param1  (float v) { applyPatch (int (v + 0.5f)); }
+    event param2  (float v) { drive      = v; }
+    event param3  (float v) { bass       = v; }
+    event param4  (float v) { midVal     = v; }
+    event param5  (float v) { treble     = v; }
+    event param6  (float v) { presence   = v; }
+    event param7  (float v) { masterVol  = v; }
+    event param8  (float v) { cabOn      = v; }
+    event param9  (float v) { gateThresh = v; }
+    event param10 (float v) { brightOn   = v; }
+
+    // ── Processor-scope helpers ───────────────────────────────────────────────
+    float clampF (float x, float lo, float hi)
+    {
+        return x < lo ? lo : (x > hi ? hi : x);
+    }
+
+    // Asymmetric 12AX7 triode saturation
+    float triode (float x, float gain)
+    {
+        let d = x * gain;
+        let y = d > 0.0f ? d / (1.0f + d * 0.5f)
+                         : d / (1.0f - d * 1.2f);
+        return clampF (y, -1.0f, 0.85f);
+    }
+
+    // 1-pole lowpass: returns new state = state + a*(x - state)
+    float lp1step (float x, float state, float a)
+    {
+        return state + a * (x - state);
+    }
+
+    // Cabinet convolution — one sample, uses cabWr (global write head)
+    float cabConvL (float x)
+    {
+        cabBufL.at (cabWr) = x;
+        var acc = 0.0f;
+        for (int i = 0; i < 64; i++)
+            acc += cabIR.at (i) * cabBufL.at ((cabWr - i + 64) % 64);
+        return acc;
+    }
+
+    float cabConvR (float x)
+    {
+        cabBufR.at (cabWr) = x;
+        var acc = 0.0f;
+        for (int i = 0; i < 64; i++)
+            acc += cabIR.at (i) * cabBufR.at ((cabWr - i + 64) % 64);
+        return acc;
+    }
+
+    void applyPatch (int p)
+    {
+        let idx = clampF (float (p), 1.0f, 20.0f);
+        let i   = int (idx) - 1;
+        drive     = pDrive.at (i);
+        bass      = pBass.at  (i);
+        midVal    = pMid.at   (i);
+        treble    = pTreble.at(i);
+        presence  = pPres.at  (i);
+        masterVol = pMast.at  (i);
+        brightOn  = pBrt.at   (i);
+    }
+
+    void initPatches()
+    {
+        // Lead 1–12  (indices 0–11)
+        pDrive.at(0)=8.5f;  pBass.at(0)=4.0f;  pMid.at(0)=5.5f;  pTreble.at(0)=5.0f;  pPres.at(0)=6.0f;  pMast.at(0)=7.0f;  pBrt.at(0)=0.0f;
+        pDrive.at(1)=9.0f;  pBass.at(1)=3.5f;  pMid.at(1)=5.0f;  pTreble.at(1)=5.5f;  pPres.at(1)=6.5f;  pMast.at(1)=7.0f;  pBrt.at(1)=0.0f;
+        pDrive.at(2)=7.5f;  pBass.at(2)=5.5f;  pMid.at(2)=6.0f;  pTreble.at(2)=4.5f;  pPres.at(2)=5.0f;  pMast.at(2)=7.5f;  pBrt.at(2)=0.0f;
+        pDrive.at(3)=8.0f;  pBass.at(3)=4.5f;  pMid.at(3)=7.0f;  pTreble.at(3)=4.5f;  pPres.at(3)=5.5f;  pMast.at(3)=7.0f;  pBrt.at(3)=0.0f;
+        pDrive.at(4)=9.5f;  pBass.at(4)=3.0f;  pMid.at(4)=5.5f;  pTreble.at(4)=6.0f;  pPres.at(4)=7.0f;  pMast.at(4)=6.5f;  pBrt.at(4)=1.0f;
+        pDrive.at(5)=8.0f;  pBass.at(5)=3.5f;  pMid.at(5)=4.5f;  pTreble.at(5)=7.0f;  pPres.at(5)=7.5f;  pMast.at(5)=7.0f;  pBrt.at(5)=1.0f;
+        pDrive.at(6)=7.0f;  pBass.at(6)=5.0f;  pMid.at(6)=6.5f;  pTreble.at(6)=4.0f;  pPres.at(6)=4.5f;  pMast.at(6)=8.0f;  pBrt.at(6)=0.0f;
+        pDrive.at(7)=8.5f;  pBass.at(7)=5.5f;  pMid.at(7)=7.0f;  pTreble.at(7)=3.5f;  pPres.at(7)=4.0f;  pMast.at(7)=7.5f;  pBrt.at(7)=0.0f;
+        pDrive.at(8)=10.0f; pBass.at(8)=3.0f;  pMid.at(8)=5.0f;  pTreble.at(8)=6.0f;  pPres.at(8)=7.0f;  pMast.at(8)=6.0f;  pBrt.at(8)=1.0f;
+        pDrive.at(9)=6.5f;  pBass.at(9)=5.0f;  pMid.at(9)=5.5f;  pTreble.at(9)=5.5f;  pPres.at(9)=5.5f;  pMast.at(9)=8.0f;  pBrt.at(9)=0.0f;
+        pDrive.at(10)=6.0f; pBass.at(10)=6.0f; pMid.at(10)=6.5f; pTreble.at(10)=3.0f; pPres.at(10)=3.5f; pMast.at(10)=8.5f; pBrt.at(10)=0.0f;
+        pDrive.at(11)=9.0f; pBass.at(11)=6.0f; pMid.at(11)=3.5f; pTreble.at(11)=7.0f; pPres.at(11)=7.5f; pMast.at(11)=7.0f; pBrt.at(11)=1.0f;
+        // Clean 1–8 (indices 12–19)
+        pDrive.at(12)=2.5f; pBass.at(12)=5.5f; pMid.at(12)=5.0f; pTreble.at(12)=6.0f; pPres.at(12)=5.5f; pMast.at(12)=8.0f; pBrt.at(12)=0.0f;
+        pDrive.at(13)=2.0f; pBass.at(13)=6.5f; pMid.at(13)=5.5f; pTreble.at(13)=4.5f; pPres.at(13)=4.5f; pMast.at(13)=8.5f; pBrt.at(13)=0.0f;
+        pDrive.at(14)=2.0f; pBass.at(14)=4.5f; pMid.at(14)=4.5f; pTreble.at(14)=7.5f; pPres.at(14)=7.0f; pMast.at(14)=7.5f; pBrt.at(14)=1.0f;
+        pDrive.at(15)=3.5f; pBass.at(15)=5.0f; pMid.at(15)=5.5f; pTreble.at(15)=6.5f; pPres.at(15)=6.0f; pMast.at(15)=7.5f; pBrt.at(15)=1.0f;
+        pDrive.at(16)=1.5f; pBass.at(16)=7.0f; pMid.at(16)=6.0f; pTreble.at(16)=3.0f; pPres.at(16)=3.0f; pMast.at(16)=9.0f; pBrt.at(16)=0.0f;
+        pDrive.at(17)=3.0f; pBass.at(17)=4.5f; pMid.at(17)=6.0f; pTreble.at(17)=6.5f; pPres.at(17)=6.5f; pMast.at(17)=8.0f; pBrt.at(17)=1.0f;
+        pDrive.at(18)=2.0f; pBass.at(18)=6.0f; pMid.at(18)=5.0f; pTreble.at(18)=5.5f; pPres.at(18)=5.0f; pMast.at(18)=9.0f; pBrt.at(18)=0.0f;
+        pDrive.at(19)=1.5f; pBass.at(19)=5.0f; pMid.at(19)=4.5f; pTreble.at(19)=6.5f; pPres.at(19)=6.0f; pMast.at(19)=8.5f; pBrt.at(19)=1.0f;
+    }
+
+    void initCabIR()
+    {
+        // Celestion V30 1×12 open-back — minimum-phase 64-tap FIR
+        cabIR.at(0)= 0.18f;  cabIR.at(1)= 0.29f;  cabIR.at(2)= 0.22f;  cabIR.at(3)= 0.08f;
+        cabIR.at(4)=-0.06f;  cabIR.at(5)=-0.14f;  cabIR.at(6)=-0.11f;  cabIR.at(7)=-0.03f;
+        cabIR.at(8)= 0.07f;  cabIR.at(9)= 0.13f;  cabIR.at(10)=0.11f;  cabIR.at(11)=0.06f;
+        cabIR.at(12)=0.01f;  cabIR.at(13)=-0.04f; cabIR.at(14)=-0.07f; cabIR.at(15)=-0.06f;
+        cabIR.at(16)=-0.03f; cabIR.at(17)=0.01f;  cabIR.at(18)=0.05f;  cabIR.at(19)=0.06f;
+        cabIR.at(20)=0.05f;  cabIR.at(21)=0.03f;  cabIR.at(22)=0.01f;  cabIR.at(23)=-0.02f;
+        cabIR.at(24)=-0.04f; cabIR.at(25)=-0.04f; cabIR.at(26)=-0.03f; cabIR.at(27)=-0.01f;
+        cabIR.at(28)=0.01f;  cabIR.at(29)=0.03f;  cabIR.at(30)=0.03f;  cabIR.at(31)=0.02f;
+        cabIR.at(32)=0.01f;  cabIR.at(33)=-0.01f; cabIR.at(34)=-0.02f; cabIR.at(35)=-0.02f;
+        cabIR.at(36)=-0.02f; cabIR.at(37)=-0.01f; cabIR.at(38)=0.00f;  cabIR.at(39)=0.01f;
+        cabIR.at(40)=0.02f;  cabIR.at(41)=0.01f;  cabIR.at(42)=0.01f;  cabIR.at(43)=0.00f;
+        cabIR.at(44)=-0.01f; cabIR.at(45)=-0.01f; cabIR.at(46)=-0.01f; cabIR.at(47)=-0.01f;
+        cabIR.at(48)=0.00f;  cabIR.at(49)=0.01f;  cabIR.at(50)=0.01f;  cabIR.at(51)=0.01f;
+        cabIR.at(52)=0.00f;  cabIR.at(53)=0.00f;  cabIR.at(54)=-0.01f; cabIR.at(55)=-0.01f;
+        cabIR.at(56)=0.00f;  cabIR.at(57)=0.00f;  cabIR.at(58)=0.00f;  cabIR.at(59)=0.00f;
+        cabIR.at(60)=0.00f;  cabIR.at(61)=0.00f;  cabIR.at(62)=0.00f;  cabIR.at(63)=0.00f;
+    }
+
+    // ── Main DSP loop ─────────────────────────────────────────────────────────
+    void main()
+    {
+        initPatches();
+        initCabIR();
+        applyPatch (1);
+
+        loop
+        {
+            let sr = float (processor.frequency);
+
+            var sigL = in[0];
+            var sigR = in[1];
+
+            // ── 0. Noise gate ──────────────────────────────────────────────
+            let absL = sigL < 0.0f ? -sigL : sigL;
+            let absR = sigR < 0.0f ? -sigR : sigR;
+            let gaAttL = absL > gateEnvL ? 0.001f : 0.05f;
+            let gaAttR = absR > gateEnvR ? 0.001f : 0.05f;
+            gateEnvL = gateEnvL + gaAttL * (absL - gateEnvL);
+            gateEnvR = gateEnvR + gaAttR * (absR - gateEnvR);
+            let gtL = gateEnvL > gateThresh ? 1.0f : gateEnvL / (gateThresh + 0.00001f);
+            let gtR = gateEnvR > gateThresh ? 1.0f : gateEnvR / (gateThresh + 0.00001f);
+            sigL = sigL * gtL;
+            sigR = sigR * gtR;
+
+            // ── 1. Bright filter (pre-gain high shelf +3dB above 3kHz) ─────
+            let brightA = float (exp (float64 (-6.283185f * 3000.0f) / float64 (sr)));
+            let bGain   = brightOn * 0.5f;
+            let bfL = lp1step (sigL, brightSL, 1.0f - brightA);
+            brightSL = bfL;
+            sigL = sigL + (sigL - bfL) * bGain;
+            let bfR = lp1step (sigR, brightSR, 1.0f - brightA);
+            brightSR = bfR;
+            sigR = sigR + (sigR - bfR) * bGain;
+
+            // ── 2. Preamp — 3 cascaded triode stages ──────────────────────
+            let preGain = float (exp (float64 (drive * 0.46f)));
+            let hpA     = float (exp (float64 (-6.283185f *  16.0f) / float64 (sr)));
+            let lpA     = float (exp (float64 (-6.283185f * 12000.0f) / float64 (sr)));
+            let hpCoef  = 1.0f - hpA;
+            let lpCoef  = 1.0f - lpA;
+
+            // Stage 1
+            let hp1L = lp1step (sigL, s1hpL, hpCoef); s1hpL = hp1L;
+            sigL = sigL - hp1L;
+            let hp1R = lp1step (sigR, s1hpR, hpCoef); s1hpR = hp1R;
+            sigR = sigR - hp1R;
+            sigL = triode (sigL, preGain * 0.33f);
+            sigR = triode (sigR, preGain * 0.33f);
+            s1lpL = lp1step (sigL, s1lpL, lpCoef); sigL = s1lpL;
+            s1lpR = lp1step (sigR, s1lpR, lpCoef); sigR = s1lpR;
+
+            // Stage 2
+            let hp2L = lp1step (sigL, s2hpL, hpCoef); s2hpL = hp2L;
+            sigL = sigL - hp2L;
+            let hp2R = lp1step (sigR, s2hpR, hpCoef); s2hpR = hp2R;
+            sigR = sigR - hp2R;
+            sigL = triode (sigL, preGain * 0.5f);
+            sigR = triode (sigR, preGain * 0.5f);
+            s2lpL = lp1step (sigL, s2lpL, lpCoef); sigL = s2lpL;
+            s2lpR = lp1step (sigR, s2lpR, lpCoef); sigR = s2lpR;
+
+            // Stage 3
+            let hp3L = lp1step (sigL, s3hpL, hpCoef); s3hpL = hp3L;
+            sigL = sigL - hp3L;
+            let hp3R = lp1step (sigR, s3hpR, hpCoef); s3hpR = hp3R;
+            sigR = sigR - hp3R;
+            sigL = triode (sigL, preGain);
+            sigR = triode (sigR, preGain);
+            s3lpL = lp1step (sigL, s3lpL, lpCoef); sigL = s3lpL;
+            s3lpR = lp1step (sigR, s3lpR, lpCoef); sigR = s3lpR;
+
+            // ── 3. Tone Stack (Baxandall) ──────────────────────────────────
+            // Bass shelf (200 Hz)
+            let bassA  = float (exp (float64 (-6.283185f * 200.0f) / float64 (sr)));
+            let bassG  = (bass - 5.0f) * 0.18f;
+            let bsL = lp1step (sigL, tBassL, 1.0f - bassA); tBassL = bsL;
+            let bsR = lp1step (sigR, tBassR, 1.0f - bassA); tBassR = bsR;
+            sigL = sigL + bsL * bassG;
+            sigR = sigR + bsR * bassG;
+
+            // Mid peak (750 Hz)
+            let midA  = float (exp (float64 (-6.283185f * 750.0f) / float64 (sr)));
+            let midG  = (midVal - 5.0f) * 0.15f;
+            let midLpL = lp1step (sigL, tMidL, 1.0f - midA); tMidL = midLpL;
+            let midLpR = lp1step (sigR, tMidR, 1.0f - midA); tMidR = midLpR;
+            sigL = sigL + (sigL - midLpL) * midG;
+            sigR = sigR + (sigR - midLpR) * midG;
+
+            // Treble shelf (2500 Hz)
+            let trebA  = float (exp (float64 (-6.283185f * 2500.0f) / float64 (sr)));
+            let trebG  = (treble - 5.0f) * 0.15f;
+            let trbLpL = lp1step (sigL, tTrebL, 1.0f - trebA); tTrebL = trbLpL;
+            let trbLpR = lp1step (sigR, tTrebR, 1.0f - trebA); tTrebR = trbLpR;
+            sigL = sigL + (sigL - trbLpL) * trebG;
+            sigR = sigR + (sigR - trbLpR) * trebG;
+
+            // ── 4. Presence shelf (4000 Hz) ────────────────────────────────
+            let presA  = float (exp (float64 (-6.283185f * 4000.0f) / float64 (sr)));
+            let presG  = (presence - 5.0f) * 0.12f;
+            let prsLpL = lp1step (sigL, tPresL, 1.0f - presA); tPresL = prsLpL;
+            let prsLpR = lp1step (sigR, tPresR, 1.0f - presA); tPresR = prsLpR;
+            sigL = sigL + (sigL - prsLpL) * presG;
+            sigR = sigR + (sigR - prsLpR) * presG;
+
+            // ── 5. Power amp: sag + class-AB soft clip ─────────────────────
+            let sagAtt = float (exp (float64 (-6.283185f * 30.0f) / float64 (sr)));
+            let sagRel = float (exp (float64 (-6.283185f *  0.5f) / float64 (sr)));
+            let sagInL = sigL < 0.0f ? -sigL : sigL;
+            let sagInR = sigR < 0.0f ? -sigR : sigR;
+            let sagAlL = sagInL > sagEnvL ? 1.0f - sagAtt : 1.0f - sagRel;
+            let sagAlR = sagInR > sagEnvR ? 1.0f - sagAtt : 1.0f - sagRel;
+            sagEnvL = sagEnvL + sagAlL * (sagInL - sagEnvL);
+            sagEnvR = sagEnvR + sagAlR * (sagInR - sagEnvR);
+            let sagL = 1.0f - clampF (sagEnvL * 0.3f, 0.0f, 0.35f);
+            let sagR = 1.0f - clampF (sagEnvR * 0.3f, 0.0f, 0.35f);
+            sigL = sigL * sagL;
+            sigR = sigR * sagR;
+            let absS = sigL < 0.0f ? -sigL : sigL;
+            let absSR = sigR < 0.0f ? -sigR : sigR;
+            sigL = sigL / (1.0f + absS  * 0.7f);
+            sigR = sigR / (1.0f + absSR * 0.7f);
+
+            // ── 6. Cabinet IR (64-tap FIR) ─────────────────────────────────
+            if (cabOn > 0.5f)
+            {
+                sigL = cabConvL (sigL);
+                sigR = cabConvR (sigR);
+                cabWr = (cabWr + 1) % 64;
+            }
+
+            // ── 7. Master volume ───────────────────────────────────────────
+            let vol = masterVol * 0.1f;
+            sigL = sigL * vol;
+            sigR = sigR * vol;
+
+            out <- float<2> (clampF (sigL, -1.0f, 1.0f),
+                             clampF (sigR, -1.0f, 1.0f));
+            advance();
+        }
+    }
+}

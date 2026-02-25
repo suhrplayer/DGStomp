@@ -1,0 +1,48 @@
+{
+  "Name": "DG Stomp",
+  "Version": "1.0.0",
+  "Factory Info": {
+    "Vendor": "JAMAHA",
+    "URL": "",
+    "E-Mail": "",
+    "Flags": {
+      "Unicode": true,
+      "Classes Discardable": false,
+      "Component Non Discardable": false,
+    },
+  },
+  "Classes": [
+    {
+      "CID": "ABCDEF019182FAEB4A6D686144675374",
+      "Category": "Audio Module Class",
+      "Name": "DG Stomp",
+      "Vendor": "JAMAHA",
+      "Version": "1.0.0",
+      "SDKVersion": "VST 3.8.0",
+      "Sub Categories": [
+        "Fx",
+        "Distortion",
+      ],
+      "Class Flags": 0,
+      "Cardinality": 2147483647,
+      "Snapshots": [
+      ],
+    },
+    {
+      "CID": "ABCDEF011234ABCD4A6D686144675374",
+      "Category": "Component Controller Class",
+      "Name": "DG Stomp",
+      "Vendor": "JAMAHA",
+      "Version": "1.0.0",
+      "SDKVersion": "VST 3.8.0",
+      "Sub Categories": [
+        "Fx",
+        "Distortion",
+      ],
+      "Class Flags": 0,
+      "Cardinality": 2147483647,
+      "Snapshots": [
+      ],
+    },
+  ],
+}

@@ -1,0 +1,13 @@
+/Library/Audio/Plug-Ins/VST3/DGStomp.vst3/Contents/Resources/DGStompUI.js
+/Library/Audio/Plug-Ins/Components/DGStomp.component/Contents/Resources/DGStompUI.js
+/Library/Audio/Plug-Ins/VST3/DGStomp.vst3/Contents/_CodeSignature/CodeResources
+/Library/Audio/Plug-Ins/VST3/DGStomp.vst3/Contents/MacOS/DGStomp
+/Library/Audio/Plug-Ins/VST3/DGStomp.vst3/Contents/Resources/DGStompUI.js
+/Library/Audio/Plug-Ins/VST3/DGStomp.vst3/Contents/Resources/moduleinfo.json
+/Library/Audio/Plug-Ins/VST3/DGStomp.vst3/Contents/Info.plist
+/Library/Audio/Plug-Ins/VST3/DGStomp.vst3/Contents/PkgInfo
+/Library/Audio/Plug-Ins/Components/DGStomp.component/Contents/_CodeSignature/CodeResources
+/Library/Audio/Plug-Ins/Components/DGStomp.component/Contents/MacOS/DGStomp
+/Library/Audio/Plug-Ins/Components/DGStomp.component/Contents/Resources/DGStompUI.js
+/Library/Audio/Plug-Ins/Components/DGStomp.component/Contents/Info.plist
+/Library/Audio/Plug-Ins/Components/DGStomp.component/Contents/PkgInfo

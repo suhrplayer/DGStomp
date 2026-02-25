@@ -1,0 +1,12 @@
+{
+    "CmajorVersion": 1,
+    "ID":            "com.jamaha.dgstomp",
+    "version":       "1.0.0",
+    "name":          "DG Stomp",
+    "description":   "JAMAHA DG-Stomp Amp Simulator — Holdsworth Edition",
+    "manufacturer":  "JAMAHA",
+    "category":      "Effect",
+    "isInstrument":  false,
+    "source":        "DGStompAmp.cmajor",
+    "view":          { "src": "DGStompUI.js", "width": 860, "height": 480 }
+}

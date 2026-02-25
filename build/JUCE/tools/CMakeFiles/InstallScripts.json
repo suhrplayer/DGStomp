@@ -1,0 +1,10 @@
+{
+	"InstallScripts" : 
+	[
+		"/Users/jamesmcfarland/Downloads/DGStomp/build/JUCE/tools/cmake_install.cmake",
+		"/Users/jamesmcfarland/Downloads/DGStomp/build/JUCE/tools/modules/cmake_install.cmake",
+		"/Users/jamesmcfarland/Downloads/DGStomp/build/JUCE/tools/extras/Build/cmake_install.cmake",
+		"/Users/jamesmcfarland/Downloads/DGStomp/build/JUCE/tools/extras/Build/juceaide/cmake_install.cmake"
+	],
+	"Parallel" : false
+}
