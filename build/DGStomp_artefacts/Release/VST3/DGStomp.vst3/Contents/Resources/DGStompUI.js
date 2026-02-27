@@ -437,7 +437,7 @@ function makeCabIRLoader() {
       color: C.textDim, fontFamily: 'monospace', fontSize: '10px',
       letterSpacing: '0.08em',
     },
-    title: 'Load WAVE cabinet IR',
+    title: 'Load WAV cabinet IR',
     onClick: () => fileInput.click(),
   }, 'LOAD IR');
 
@@ -796,3 +796,4 @@ export default function createPatchView(connection) {
   }
   return root;
 }
+

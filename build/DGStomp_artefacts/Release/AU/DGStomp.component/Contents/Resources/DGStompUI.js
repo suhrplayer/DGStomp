@@ -1,3 +1,6 @@
+// Copy of Patch/DGStompUI.js for AU build
+// (see source file for comments and details)
+
 // ============================================================
 //  JAMAHA DG-Stomp  —  Amp Simulator
 //  Hardware aesthetic: Yamaha DG Stomp pedal
@@ -27,7 +30,6 @@ const AMP_MODELS = [
   { id: 20, name: "CLEAN 8", cat: "CLEAN", code: "C8 ", desc: "AH clean tone                 ", gain: 0.150, bass: 0.500, mid: 0.450, treble: 0.650, presence: 0.600, volume: 0.850, bright: true }
 ];
 
-// ─── COLOUR PALETTE ────────────────────────────────────────────────────────────
 const C = {
   chassis:    '#1a1d2e',
   chassisMid: '#22263a',
@@ -52,7 +54,6 @@ const C = {
   border:     '#2a2e44',
 };
 
-// ─── STATE ─────────────────────────────────────────────────────────────────────
 const state = {
   model:    3,
   gain:     0.65,
@@ -70,11 +71,6 @@ const state = {
 let patchConn = null;
 let root      = null;
 
-// ─── PARAMETER MAP ─────────────────────────────────────────────────────────────
-// PARAMS: JS state is always 0-1. toVal scales to raw parameter range
-// before sending; fromVal scales raw values back to 0-1 on receive.
-// This works identically for both JUCE (normalizes internally) and
-// Cmajor/Amorph (receives raw values directly).
 const PARAMS = {
   model:    { id: 'param1', toVal: v => Math.round(v * 19) + 1, fromVal: v => (v - 1) / 19 },
   gain:     { id: 'param2', toVal: v => v * 10,                  fromVal: v => v / 10        },
@@ -93,7 +89,6 @@ function sendParam(key, value) {
   if (p && patchConn) patchConn.sendEventOrValue(p.id, p.toVal(value));
 }
 
-// ─── HELPERS ───────────────────────────────────────────────────────────────────
 function el(tag, attrs = {}, ...children) {
   const e = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs)) {
@@ -115,7 +110,6 @@ function svg(tag, attrs = {}, ...children) {
   return e;
 }
 
-// ─── KNOB COMPONENT ────────────────────────────────────────────────────────────
 function makeKnob(opts) {
   const { label, key, min = 0, max = 1, decimals = 2, size = 64 } = opts;
   let value = state[key] ?? 0;
@@ -133,37 +127,28 @@ function makeKnob(opts) {
     const angle = startAngle + norm * (endAngle - startAngle);
     const rad = (a) => (a - 90) * Math.PI / 180;
 
-    // Shadow
     knobSvg.appendChild(svg('circle', { cx: R, cy: R + 2, r: R - 4, fill: 'rgba(0,0,0,0.5)' }));
-    // Outer ring
     knobSvg.appendChild(svg('circle', { cx: R, cy: R, r: R - 3, fill: C.knobRim }));
-    // Track arc
     const arcPath = (a1, a2, r) => {
       const x1 = R + r * Math.cos(rad(a1)), y1 = R + r * Math.sin(rad(a1));
       const x2 = R + r * Math.cos(rad(a2)), y2 = R + r * Math.sin(rad(a2));
       const large = Math.abs(a2 - a1) > 180 ? 1 : 0;
       return `M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2}`;
     };
-    // Background arc
     knobSvg.appendChild(svg('path', { d: arcPath(startAngle, endAngle, R - 5), stroke: C.chassisDark, 'stroke-width': 3, fill: 'none', 'stroke-linecap': 'round' }));
-    // Value arc
     if (norm > 0.01)
       knobSvg.appendChild(svg('path', { d: arcPath(startAngle, angle, R - 5), stroke: C.orange, 'stroke-width': 3, fill: 'none', 'stroke-linecap': 'round' }));
-    // Knob body
     knobSvg.appendChild(svg('circle', { cx: R, cy: R, r: R - 7, fill: `url(#kg${key})` }));
-    // Gradient
     const grad = svg('radialGradient', { id: `kg${key}`, cx: '35%', cy: '30%', r: '65%' });
     grad.appendChild(svg('stop', { offset: '0%', 'stop-color': C.silverLight }));
     grad.appendChild(svg('stop', { offset: '60%', 'stop-color': C.knobBody }));
     grad.appendChild(svg('stop', { offset: '100%', 'stop-color': C.chassisDark }));
     const defs = svg('defs'); defs.appendChild(grad);
     knobSvg.insertBefore(defs, knobSvg.firstChild);
-    // Indicator dot
     const ir = R - 10;
     const ix = R + ir * Math.cos(rad(angle));
     const iy = R + ir * Math.sin(rad(angle));
     knobSvg.appendChild(svg('circle', { cx: ix, cy: iy, r: 3, fill: C.orange }));
-    // Center cap
     knobSvg.appendChild(svg('circle', { cx: R, cy: R, r: 4, fill: C.knobBody }));
   }
 
@@ -206,7 +191,6 @@ function makeKnob(opts) {
   return wrap;
 }
 
-// ─── LCD DISPLAY ───────────────────────────────────────────────────────────────
 let lcdEl = null;
 function makeLCD() {
   lcdEl = el('div', {
@@ -239,7 +223,6 @@ function updateLCD() {
   `;
 }
 
-// ─── MODEL SELECTOR GRID ───────────────────────────────────────────────────────
 let modelButtons = [];
 function makeModelGrid() {
   const grid = el('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '5px' } });
@@ -275,17 +258,13 @@ function selectModel(id) {
   sendParam('model', id);
   const m = AMP_MODELS[id - 1];
   if (m) {
-    // Apply all patch parameters to state and DSP
     ['gain','bass','mid','treble','presence','volume'].forEach(k => {
       state[k] = m[k];
       sendParam(k, m[k]);
     });
-    // Bright is a boolean in the model — send as 0/1
     state.bright = m.bright ? 1 : 0;
     sendParam('bright', state.bright);
-    // Update bright button LED
     updateBrightLed();
-    // Redraw all knobs with their new values via _setValue
     if (root) root.querySelectorAll('[data-knob]').forEach(w => {
       if (w._setValue && state[w._key] !== undefined) w._setValue(state[w._key]);
     });
@@ -305,7 +284,6 @@ function refreshModelButtons() {
   });
 }
 
-// ─── CABINET TOGGLE ────────────────────────────────────────────────────────────
 let cabLedEl = null;
 function makeCabToggle() {
   cabLedEl = el('div', {
@@ -337,7 +315,6 @@ function makeCabToggle() {
   return btn;
 }
 
-// ─── BRIGHT TOGGLE ─────────────────────────────────────────────────────────────
 let brightLedEl = null;
 function updateBrightLed() {
   if (!brightLedEl) return;
@@ -374,7 +351,6 @@ function makeBrightToggle() {
   return btn;
 }
 
-// ─── CABINET IR LOADER ─────────────────────────────────────────────────────────
 let irFilenameEl = null;
 let loadCabIRFn  = null;
 let resetCabIRFn = null;
@@ -391,7 +367,6 @@ function makeCabIRLoader() {
     }
   }, 'BUILT-IN V30');
 
-  // Hidden file input
   const fileInput = el('input', {
     type: 'file', accept: '.wav,.WAV',
     style: { display: 'none' },
@@ -404,7 +379,6 @@ function makeCabIRLoader() {
     try {
       const arrayBuf = await file.arrayBuffer();
       const bytes    = new Uint8Array(arrayBuf);
-      // Encode to base64 in chunks to avoid stack overflow on large IRs
       let b64 = '';
       const chunk = 32768;
       for (let i = 0; i < bytes.length; i += chunk) {
@@ -437,7 +411,7 @@ function makeCabIRLoader() {
       color: C.textDim, fontFamily: 'monospace', fontSize: '10px',
       letterSpacing: '0.08em',
     },
-    title: 'Load WAVE cabinet IR',
+    title: 'Load WAV cabinet IR',
     onClick: () => fileInput.click(),
   }, 'LOAD IR');
 
@@ -456,12 +430,10 @@ function makeCabIRLoader() {
     },
   }, 'RST');
 
-  // ── HP / LP frequency sliders ──────────────────────────────────────────
   function fmtHz(hz) {
     return hz >= 1000 ? (hz/1000).toFixed(1)+'k' : Math.round(hz)+'';
   }
 
-  // State
   let hpHz = 20, lpHz = 20000;
 
   const hpValEl = el('div', {
@@ -474,7 +446,6 @@ function makeCabIRLoader() {
              minWidth: '32px', textAlign: 'right', letterSpacing: '0.04em' }
   }, fmtHz(lpHz));
 
-  // Shared slider style
   const sliderStyle = {
     appearance: 'none', WebkitAppearance: 'none',
     width: '90px', height: '3px', cursor: 'pointer',
@@ -483,8 +454,6 @@ function makeCabIRLoader() {
     accentColor: C.orange,
   };
 
-  // HP slider: log scale 20–2000 Hz (log position → Hz)
-  // We map slider 0–100 → log(20)–log(2000)
   const HP_MIN = Math.log(20), HP_MAX = Math.log(2000);
   const hpSlider = el('input', {
     type: 'range', min: '0', max: '100', step: '1', value: '0',
@@ -498,7 +467,6 @@ function makeCabIRLoader() {
     if (setCabHPFn) setCabHPFn(hpHz);
   });
 
-  // LP slider: log scale 1000–20000 Hz
   const LP_MIN = Math.log(1000), LP_MAX = Math.log(20000);
   const lpSlider = el('input', {
     type: 'range', min: '0', max: '100', step: '1', value: '100',
@@ -512,7 +480,6 @@ function makeCabIRLoader() {
     if (setCabLPFn) setCabLPFn(lpHz);
   });
 
-  // Label style
   const lblStyle = { color: C.textDim, fontFamily: 'monospace', fontSize: '9px',
                      letterSpacing: '0.08em', minWidth: '18px' };
 
@@ -543,7 +510,6 @@ function makeCabIRLoader() {
   return wrap;
 }
 
-// ─── BYPASS TOGGLE ─────────────────────────────────────────────────────────────
 let bypassLedEl = null;
 function makeBypassToggle() {
   bypassLedEl = el('div', {
@@ -564,7 +530,6 @@ function makeBypassToggle() {
     },
     onClick: () => {
       state.bypassed = !state.bypassed;
-      // Volume = 0 is our bypass proxy until a proper bypass param exists
       sendParam('volume', state.bypassed ? 0 : state.volume);
       bypassLedEl.style.background = state.bypassed ? C.ledRed : C.chassisDark;
       bypassLedEl.style.boxShadow  = state.bypassed ? `0 0 8px ${C.ledRed}` : 'none';
@@ -574,7 +539,6 @@ function makeBypassToggle() {
   return btn;
 }
 
-// ─── VALUE DISPLAY ─────────────────────────────────────────────────────────────
 let displayEl = null;
 function makeDisplay() {
   displayEl = el('div', {
@@ -604,7 +568,6 @@ function updateDisplay() {
   `;
 }
 
-// ─── DECORATIVE LOGO ───────────────────────────────────────────────────────────
 function makeLogo() {
   return el('div', {
     style: {
@@ -619,7 +582,6 @@ function makeLogo() {
   );
 }
 
-// ─── SCREW DECORATION ──────────────────────────────────────────────────────────
 function makeScrew() {
   const s = svg('svg', { width: 16, height: 16 });
   s.appendChild(svg('circle', { cx: 8, cy: 8, r: 7, fill: C.silverDark, stroke: C.chassisDark, 'stroke-width': 1 }));
@@ -628,7 +590,6 @@ function makeScrew() {
   return s;
 }
 
-// ─── PANEL SECTION LABEL ───────────────────────────────────────────────────────
 function sectionLabel(text) {
   return el('div', {
     style: {
@@ -640,18 +601,15 @@ function sectionLabel(text) {
   }, text);
 }
 
-// ─── MAIN ASSEMBLY ─────────────────────────────────────────────────────────────
 export default function createPatchView(connection) {
   patchConn = connection;
 
-  // Wire IR loader native functions
   loadCabIRFn  = window._loadCabIR  || null;
   resetCabIRFn = window._resetCabIR || null;
   setCabHPFn   = window._setCabHP   || null;
   setCabLPFn   = window._setCabLP   || null;
   const getIRInfoFn = window._getIRInfo || null;
 
-  // Pull initial values from DSP — called after DOM is built so _draw() works
   const paramKeys = ['param1','param2','param3','param4','param5','param6','param7','param8','param9','param10'];
   const stateKeys = ['model','gain','bass','mid','treble','presence','volume','cabinet','trim','bright'];
   function requestAllParams() {
@@ -670,7 +628,6 @@ export default function createPatchView(connection) {
     updateDisplay();
   });
 
-  // ── Build the pedal chassis ─────────────────────────────────────────────────
   root = el('div', {
     style: {
       width: '100%', height: '100%',
@@ -685,7 +642,6 @@ export default function createPatchView(connection) {
     }
   });
 
-  // Brushed metal texture overlay
   const texture = el('div', {
     style: {
       position: 'absolute', inset: 0, pointerEvents: 'none',
@@ -695,7 +651,6 @@ export default function createPatchView(connection) {
   });
   root.appendChild(texture);
 
-  // ── Top bar: logo + screws ───────────────────────────────────────────────────
   const topBar = el('div', {
     style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', zIndex: 1 }
   },
@@ -704,7 +659,6 @@ export default function createPatchView(connection) {
     makeScrew()
   );
 
-  // ── LCD + model grid row ─────────────────────────────────────────────────────
   const lcdRow = el('div', {
     style: { display: 'flex', gap: '16px', alignItems: 'stretch', position: 'relative', zIndex: 1 }
   },
@@ -715,7 +669,6 @@ export default function createPatchView(connection) {
     )
   );
 
-  // ── Main knobs row ───────────────────────────────────────────────────────────
   const knobDefs = [
     { key: 'gain',     label: 'GAIN',     defaultVal: 0.65 },
     { key: 'bass',     label: 'BASS',     defaultVal: 0.50 },
@@ -750,7 +703,6 @@ export default function createPatchView(connection) {
   });
   knobSection.appendChild(knobsInner);
 
-  // ── Bottom row: controls + display ───────────────────────────────────────────
   const bottomRow = el('div', {
     style: { display: 'flex', gap: '12px', alignItems: 'center', position: 'relative', zIndex: 1 }
   },
@@ -767,7 +719,6 @@ export default function createPatchView(connection) {
     makeDisplay()
   );
 
-  // ── Bottom screws ────────────────────────────────────────────────────────────
   const bottomBar = el('div', {
     style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', zIndex: 1 }
   },
@@ -782,9 +733,7 @@ export default function createPatchView(connection) {
   root.appendChild(bottomRow);
   root.appendChild(bottomBar);
 
-  // Request param values now that all knobs/buttons are in the DOM
   requestAllParams();
-  // Restore IR filename display if a user IR was loaded in a previous session
   if (getIRInfoFn) {
     getIRInfoFn().then(info => {
       if (info && !info.builtin && info.name && irFilenameEl) {
@@ -796,3 +745,4 @@ export default function createPatchView(connection) {
   }
   return root;
 }
+

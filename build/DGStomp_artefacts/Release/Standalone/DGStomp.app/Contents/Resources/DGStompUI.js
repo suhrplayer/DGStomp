@@ -1,3 +1,6 @@
+// Copy of Patch/DGStompUI.js for Standalone build
+// (see source file for comments and details)
+
 // ============================================================
 //  JAMAHA DG-Stomp  —  Amp Simulator
 //  Hardware aesthetic: Yamaha DG Stomp pedal
@@ -5,17 +8,28 @@
 // ============================================================
 
 const AMP_MODELS = [
-  { id: 1, name: "CLEAN 1",  cat: "CLEAN",  code: "C1", desc: "Fender-style clean",         gain: 0.25, bass: 0.50, mid: 0.55, treble: 0.60, presence: 0.40 },
-  { id: 2, name: "CLEAN 2",  cat: "CLEAN",  code: "C2", desc: "Hot clean / slight break-up", gain: 0.35, bass: 0.45, mid: 0.50, treble: 0.65, presence: 0.45 },
-  { id: 3, name: "LEAD 1",   cat: "LEAD",   code: "L1", desc: "DG100 — AH signature",        gain: 0.65, bass: 0.50, mid: 0.55, treble: 0.60, presence: 0.50 },
-  { id: 4, name: "LEAD 2",   cat: "LEAD",   code: "L2", desc: "DG80 — warm crunch",          gain: 0.70, bass: 0.55, mid: 0.50, treble: 0.55, presence: 0.55 },
-  { id: 5, name: "LEAD 3",   cat: "LEAD",   code: "L3", desc: "High gain sustain",           gain: 0.80, bass: 0.50, mid: 0.45, treble: 0.65, presence: 0.60 },
-  { id: 6, name: "LEAD 4",   cat: "LEAD",   code: "L4", desc: "Very high gain",              gain: 0.88, bass: 0.48, mid: 0.42, treble: 0.68, presence: 0.65 },
-  { id: 7, name: "LEAD 5",   cat: "LEAD",   code: "L5", desc: "Dark / compressed AH lead",   gain: 0.72, bass: 0.58, mid: 0.48, treble: 0.50, presence: 0.45 },
-  { id: 8, name: "LEAD 6",   cat: "LEAD",   code: "L6", desc: "Bright sustain",              gain: 0.78, bass: 0.45, mid: 0.52, treble: 0.70, presence: 0.60 },
+  { id:  1, name: "LEAD 1 ", cat: "LEAD ", code: "L1 ", desc: "DG100 — AH signature lead     ", gain: 0.850, bass: 0.400, mid: 0.550, treble: 0.500, presence: 0.600, volume: 0.700, bright: false },
+  { id:  2, name: "LEAD 2 ", cat: "LEAD ", code: "L2 ", desc: "DG80 — searing sustain        ", gain: 0.900, bass: 0.350, mid: 0.500, treble: 0.550, presence: 0.650, volume: 0.700, bright: false },
+  { id:  3, name: "LEAD 3 ", cat: "LEAD ", code: "L3 ", desc: "Warm crunch                   ", gain: 0.750, bass: 0.550, mid: 0.600, treble: 0.450, presence: 0.500, volume: 0.750, bright: false },
+  { id:  4, name: "LEAD 4 ", cat: "LEAD ", code: "L4 ", desc: "Mid-forward grind             ", gain: 0.800, bass: 0.450, mid: 0.700, treble: 0.450, presence: 0.550, volume: 0.700, bright: false },
+  { id:  5, name: "LEAD 5 ", cat: "LEAD ", code: "L5 ", desc: "High gain + bright            ", gain: 0.950, bass: 0.300, mid: 0.550, treble: 0.600, presence: 0.700, volume: 0.650, bright: true },
+  { id:  6, name: "LEAD 6 ", cat: "LEAD ", code: "L6 ", desc: "Scooped bright shred          ", gain: 0.800, bass: 0.350, mid: 0.450, treble: 0.700, presence: 0.750, volume: 0.700, bright: true },
+  { id:  7, name: "LEAD 7 ", cat: "LEAD ", code: "L7 ", desc: "Dark compressed               ", gain: 0.700, bass: 0.500, mid: 0.650, treble: 0.400, presence: 0.450, volume: 0.800, bright: false },
+  { id:  8, name: "LEAD 8 ", cat: "LEAD ", code: "L8 ", desc: "Full bass thump               ", gain: 0.850, bass: 0.550, mid: 0.700, treble: 0.350, presence: 0.400, volume: 0.750, bright: false },
+  { id:  9, name: "LEAD 9 ", cat: "LEAD ", code: "L9 ", desc: "Maximum gain                  ", gain: 1.000, bass: 0.300, mid: 0.500, treble: 0.600, presence: 0.700, volume: 0.600, bright: true },
+  { id: 10, name: "LEAD 10", cat: "LEAD ", code: "L10", desc: "Balanced AH tone              ", gain: 0.650, bass: 0.500, mid: 0.550, treble: 0.550, presence: 0.550, volume: 0.800, bright: false },
+  { id: 11, name: "LEAD 11", cat: "LEAD ", code: "L11", desc: "Thick low-mid                 ", gain: 0.600, bass: 0.600, mid: 0.650, treble: 0.300, presence: 0.350, volume: 0.850, bright: false },
+  { id: 12, name: "LEAD 12", cat: "LEAD ", code: "L12", desc: "Scooped modern bright         ", gain: 0.900, bass: 0.600, mid: 0.350, treble: 0.700, presence: 0.750, volume: 0.700, bright: true },
+  { id: 13, name: "CLEAN 1", cat: "CLEAN", code: "C1 ", desc: "Fender-style clean            ", gain: 0.250, bass: 0.550, mid: 0.500, treble: 0.600, presence: 0.550, volume: 0.800, bright: false },
+  { id: 14, name: "CLEAN 2", cat: "CLEAN", code: "C2 ", desc: "Warm jazz clean               ", gain: 0.200, bass: 0.650, mid: 0.550, treble: 0.450, presence: 0.450, volume: 0.850, bright: false },
+  { id: 15, name: "CLEAN 3", cat: "CLEAN", code: "C3 ", desc: "Bright clean                  ", gain: 0.200, bass: 0.450, mid: 0.450, treble: 0.750, presence: 0.700, volume: 0.750, bright: true },
+  { id: 16, name: "CLEAN 4", cat: "CLEAN", code: "C4 ", desc: "Slight break-up               ", gain: 0.350, bass: 0.500, mid: 0.550, treble: 0.650, presence: 0.600, volume: 0.750, bright: true },
+  { id: 17, name: "CLEAN 5", cat: "CLEAN", code: "C5 ", desc: "Deep clean                    ", gain: 0.150, bass: 0.700, mid: 0.600, treble: 0.300, presence: 0.300, volume: 0.900, bright: false },
+  { id: 18, name: "CLEAN 6", cat: "CLEAN", code: "C6 ", desc: "Glassy clean                  ", gain: 0.300, bass: 0.450, mid: 0.600, treble: 0.650, presence: 0.650, volume: 0.800, bright: true },
+  { id: 19, name: "CLEAN 7", cat: "CLEAN", code: "C7 ", desc: "Full clean                    ", gain: 0.200, bass: 0.600, mid: 0.500, treble: 0.550, presence: 0.500, volume: 0.900, bright: false },
+  { id: 20, name: "CLEAN 8", cat: "CLEAN", code: "C8 ", desc: "AH clean tone                 ", gain: 0.150, bass: 0.500, mid: 0.450, treble: 0.650, presence: 0.600, volume: 0.850, bright: true }
 ];
 
-// ─── COLOUR PALETTE ────────────────────────────────────────────────────────────
 const C = {
   chassis:    '#1a1d2e',
   chassisMid: '#22263a',
@@ -40,7 +54,6 @@ const C = {
   border:     '#2a2e44',
 };
 
-// ─── STATE ─────────────────────────────────────────────────────────────────────
 const state = {
   model:    3,
   gain:     0.65,
@@ -51,23 +64,24 @@ const state = {
   volume:   0.70,
   cabinet:  true,
   trim:     0.50,
+  bright:   0,
   bypassed: false,
 };
 
 let patchConn = null;
 let root      = null;
 
-// ─── PARAMETER MAP ─────────────────────────────────────────────────────────────
 const PARAMS = {
-  model:    { id: 'param1', toVal: v => v,             fromVal: v => v             },
-  gain:     { id: 'param2', toVal: v => v,             fromVal: v => v             },
-  bass:     { id: 'param3', toVal: v => v,             fromVal: v => v             },
-  mid:      { id: 'param4', toVal: v => v,             fromVal: v => v             },
-  treble:   { id: 'param5', toVal: v => v,             fromVal: v => v             },
-  presence: { id: 'param6', toVal: v => v,             fromVal: v => v             },
-  volume:   { id: 'param7', toVal: v => v,             fromVal: v => v             },
-  cabinet:  { id: 'param8', toVal: v => v ? 1 : 0,    fromVal: v => v >= 0.5      },
-  trim:     { id: 'param9', toVal: v => v,             fromVal: v => v             },
+  model:    { id: 'param1', toVal: v => Math.round(v * 19) + 1, fromVal: v => (v - 1) / 19 },
+  gain:     { id: 'param2', toVal: v => v * 10,                  fromVal: v => v / 10        },
+  bass:     { id: 'param3', toVal: v => v * 10,                  fromVal: v => v / 10        },
+  mid:      { id: 'param4', toVal: v => v * 10,                  fromVal: v => v / 10        },
+  treble:   { id: 'param5', toVal: v => v * 10,                  fromVal: v => v / 10        },
+  presence: { id: 'param6', toVal: v => v * 10,                  fromVal: v => v / 10        },
+  volume:   { id: 'param7', toVal: v => v * 10,                  fromVal: v => v / 10        },
+  cabinet:  { id: 'param8', toVal: v => v ? 1 : 0,               fromVal: v => v >= 0.5      },
+  trim:     { id: 'param9', toVal: v => v,                        fromVal: v => v             },
+  bright:   { id: 'param10',toVal: v => v ? 1 : 0,               fromVal: v => v >= 0.5 ? 1 : 0 },
 };
 
 function sendParam(key, value) {
@@ -75,7 +89,6 @@ function sendParam(key, value) {
   if (p && patchConn) patchConn.sendEventOrValue(p.id, p.toVal(value));
 }
 
-// ─── HELPERS ───────────────────────────────────────────────────────────────────
 function el(tag, attrs = {}, ...children) {
   const e = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs)) {
@@ -97,7 +110,6 @@ function svg(tag, attrs = {}, ...children) {
   return e;
 }
 
-// ─── KNOB COMPONENT ────────────────────────────────────────────────────────────
 function makeKnob(opts) {
   const { label, key, min = 0, max = 1, decimals = 2, size = 64 } = opts;
   let value = state[key] ?? 0;
@@ -115,37 +127,28 @@ function makeKnob(opts) {
     const angle = startAngle + norm * (endAngle - startAngle);
     const rad = (a) => (a - 90) * Math.PI / 180;
 
-    // Shadow
     knobSvg.appendChild(svg('circle', { cx: R, cy: R + 2, r: R - 4, fill: 'rgba(0,0,0,0.5)' }));
-    // Outer ring
     knobSvg.appendChild(svg('circle', { cx: R, cy: R, r: R - 3, fill: C.knobRim }));
-    // Track arc
     const arcPath = (a1, a2, r) => {
       const x1 = R + r * Math.cos(rad(a1)), y1 = R + r * Math.sin(rad(a1));
       const x2 = R + r * Math.cos(rad(a2)), y2 = R + r * Math.sin(rad(a2));
       const large = Math.abs(a2 - a1) > 180 ? 1 : 0;
       return `M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2}`;
     };
-    // Background arc
     knobSvg.appendChild(svg('path', { d: arcPath(startAngle, endAngle, R - 5), stroke: C.chassisDark, 'stroke-width': 3, fill: 'none', 'stroke-linecap': 'round' }));
-    // Value arc
     if (norm > 0.01)
       knobSvg.appendChild(svg('path', { d: arcPath(startAngle, angle, R - 5), stroke: C.orange, 'stroke-width': 3, fill: 'none', 'stroke-linecap': 'round' }));
-    // Knob body
     knobSvg.appendChild(svg('circle', { cx: R, cy: R, r: R - 7, fill: `url(#kg${key})` }));
-    // Gradient
     const grad = svg('radialGradient', { id: `kg${key}`, cx: '35%', cy: '30%', r: '65%' });
     grad.appendChild(svg('stop', { offset: '0%', 'stop-color': C.silverLight }));
     grad.appendChild(svg('stop', { offset: '60%', 'stop-color': C.knobBody }));
     grad.appendChild(svg('stop', { offset: '100%', 'stop-color': C.chassisDark }));
     const defs = svg('defs'); defs.appendChild(grad);
     knobSvg.insertBefore(defs, knobSvg.firstChild);
-    // Indicator dot
     const ir = R - 10;
     const ix = R + ir * Math.cos(rad(angle));
     const iy = R + ir * Math.sin(rad(angle));
     knobSvg.appendChild(svg('circle', { cx: ix, cy: iy, r: 3, fill: C.orange }));
-    // Center cap
     knobSvg.appendChild(svg('circle', { cx: R, cy: R, r: 4, fill: C.knobBody }));
   }
 
@@ -182,12 +185,12 @@ function makeKnob(opts) {
     knobSvg,
     el('div', { style: { color: C.textDim, fontSize: '10px', letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'monospace' } }, label)
   );
-  wrap._draw = draw;
-  wrap._key  = key;
+  wrap._draw    = draw;
+  wrap._key     = key;
+  wrap._setValue = (v) => { value = v; draw(); };
   return wrap;
 }
 
-// ─── LCD DISPLAY ───────────────────────────────────────────────────────────────
 let lcdEl = null;
 function makeLCD() {
   lcdEl = el('div', {
@@ -220,7 +223,6 @@ function updateLCD() {
   `;
 }
 
-// ─── MODEL SELECTOR GRID ───────────────────────────────────────────────────────
 let modelButtons = [];
 function makeModelGrid() {
   const grid = el('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '5px' } });
@@ -254,15 +256,18 @@ function makeModelGrid() {
 function selectModel(id) {
   state.model = id;
   sendParam('model', id);
-  // Auto-load default tone settings for this model
   const m = AMP_MODELS[id - 1];
   if (m) {
-    ['gain','bass','mid','treble','presence'].forEach(k => {
+    ['gain','bass','mid','treble','presence','volume'].forEach(k => {
       state[k] = m[k];
       sendParam(k, m[k]);
     });
-    // Redraw all knobs
-    if (root) root.querySelectorAll('[data-knob]').forEach(w => w._draw && w._draw());
+    state.bright = m.bright ? 1 : 0;
+    sendParam('bright', state.bright);
+    updateBrightLed();
+    if (root) root.querySelectorAll('[data-knob]').forEach(w => {
+      if (w._setValue && state[w._key] !== undefined) w._setValue(state[w._key]);
+    });
   }
   refreshModelButtons();
   updateLCD();
@@ -279,7 +284,6 @@ function refreshModelButtons() {
   });
 }
 
-// ─── CABINET TOGGLE ────────────────────────────────────────────────────────────
 let cabLedEl = null;
 function makeCabToggle() {
   cabLedEl = el('div', {
@@ -311,7 +315,42 @@ function makeCabToggle() {
   return btn;
 }
 
-// ─── CABINET IR LOADER ─────────────────────────────────────────────────────────
+let brightLedEl = null;
+function updateBrightLed() {
+  if (!brightLedEl) return;
+  const on = !!state.bright;
+  brightLedEl.style.background = on ? C.yellow : C.chassisDark;
+  brightLedEl.style.boxShadow  = on ? `0 0 8px ${C.yellow}` : 'none';
+}
+
+function makeBrightToggle() {
+  brightLedEl = el('div', {
+    style: {
+      width: '12px', height: '12px', borderRadius: '50%',
+      background: state.bright ? C.yellow : C.chassisDark,
+      boxShadow: state.bright ? `0 0 8px ${C.yellow}` : 'none',
+      border: `1px solid ${C.border}`,
+      transition: 'all 0.15s',
+    }
+  });
+
+  const btn = el('button', {
+    style: {
+      display: 'flex', alignItems: 'center', gap: '8px',
+      background: C.chassisDark, border: `1px solid ${C.border}`,
+      borderRadius: '5px', padding: '7px 12px', cursor: 'pointer',
+      color: C.textDim, fontFamily: 'monospace', fontSize: '11px',
+      letterSpacing: '0.1em',
+    },
+    onClick: () => {
+      state.bright = state.bright ? 0 : 1;
+      sendParam('bright', state.bright);
+      updateBrightLed();
+    }
+  }, brightLedEl, 'BRIGHT');
+  return btn;
+}
+
 let irFilenameEl = null;
 let loadCabIRFn  = null;
 let resetCabIRFn = null;
@@ -328,7 +367,6 @@ function makeCabIRLoader() {
     }
   }, 'BUILT-IN V30');
 
-  // Hidden file input
   const fileInput = el('input', {
     type: 'file', accept: '.wav,.WAV',
     style: { display: 'none' },
@@ -341,7 +379,6 @@ function makeCabIRLoader() {
     try {
       const arrayBuf = await file.arrayBuffer();
       const bytes    = new Uint8Array(arrayBuf);
-      // Encode to base64 in chunks to avoid stack overflow on large IRs
       let b64 = '';
       const chunk = 32768;
       for (let i = 0; i < bytes.length; i += chunk) {
@@ -350,7 +387,7 @@ function makeCabIRLoader() {
       b64 = btoa(b64);
 
       if (loadCabIRFn) {
-        const result = await loadCabIRFn(b64);
+        const result = await loadCabIRFn(b64, file.name);
         if (result === 'ok') {
           const name = file.name.replace(/\.wav$/i, '').toUpperCase().slice(0, 16);
           irFilenameEl.textContent = name;
@@ -374,7 +411,7 @@ function makeCabIRLoader() {
       color: C.textDim, fontFamily: 'monospace', fontSize: '10px',
       letterSpacing: '0.08em',
     },
-    title: 'Load WAVE cabinet IR',
+    title: 'Load WAV cabinet IR',
     onClick: () => fileInput.click(),
   }, 'LOAD IR');
 
@@ -393,12 +430,10 @@ function makeCabIRLoader() {
     },
   }, 'RST');
 
-  // ── HP / LP frequency sliders ──────────────────────────────────────────
   function fmtHz(hz) {
     return hz >= 1000 ? (hz/1000).toFixed(1)+'k' : Math.round(hz)+'';
   }
 
-  // State
   let hpHz = 20, lpHz = 20000;
 
   const hpValEl = el('div', {
@@ -411,7 +446,6 @@ function makeCabIRLoader() {
              minWidth: '32px', textAlign: 'right', letterSpacing: '0.04em' }
   }, fmtHz(lpHz));
 
-  // Shared slider style
   const sliderStyle = {
     appearance: 'none', WebkitAppearance: 'none',
     width: '90px', height: '3px', cursor: 'pointer',
@@ -420,8 +454,6 @@ function makeCabIRLoader() {
     accentColor: C.orange,
   };
 
-  // HP slider: log scale 20–2000 Hz (log position → Hz)
-  // We map slider 0–100 → log(20)–log(2000)
   const HP_MIN = Math.log(20), HP_MAX = Math.log(2000);
   const hpSlider = el('input', {
     type: 'range', min: '0', max: '100', step: '1', value: '0',
@@ -435,7 +467,6 @@ function makeCabIRLoader() {
     if (setCabHPFn) setCabHPFn(hpHz);
   });
 
-  // LP slider: log scale 1000–20000 Hz
   const LP_MIN = Math.log(1000), LP_MAX = Math.log(20000);
   const lpSlider = el('input', {
     type: 'range', min: '0', max: '100', step: '1', value: '100',
@@ -449,7 +480,6 @@ function makeCabIRLoader() {
     if (setCabLPFn) setCabLPFn(lpHz);
   });
 
-  // Label style
   const lblStyle = { color: C.textDim, fontFamily: 'monospace', fontSize: '9px',
                      letterSpacing: '0.08em', minWidth: '18px' };
 
@@ -480,7 +510,6 @@ function makeCabIRLoader() {
   return wrap;
 }
 
-// ─── BYPASS TOGGLE ─────────────────────────────────────────────────────────────
 let bypassLedEl = null;
 function makeBypassToggle() {
   bypassLedEl = el('div', {
@@ -501,7 +530,6 @@ function makeBypassToggle() {
     },
     onClick: () => {
       state.bypassed = !state.bypassed;
-      // Volume = 0 is our bypass proxy until a proper bypass param exists
       sendParam('volume', state.bypassed ? 0 : state.volume);
       bypassLedEl.style.background = state.bypassed ? C.ledRed : C.chassisDark;
       bypassLedEl.style.boxShadow  = state.bypassed ? `0 0 8px ${C.ledRed}` : 'none';
@@ -511,7 +539,6 @@ function makeBypassToggle() {
   return btn;
 }
 
-// ─── VALUE DISPLAY ─────────────────────────────────────────────────────────────
 let displayEl = null;
 function makeDisplay() {
   displayEl = el('div', {
@@ -541,7 +568,6 @@ function updateDisplay() {
   `;
 }
 
-// ─── DECORATIVE LOGO ───────────────────────────────────────────────────────────
 function makeLogo() {
   return el('div', {
     style: {
@@ -556,7 +582,6 @@ function makeLogo() {
   );
 }
 
-// ─── SCREW DECORATION ──────────────────────────────────────────────────────────
 function makeScrew() {
   const s = svg('svg', { width: 16, height: 16 });
   s.appendChild(svg('circle', { cx: 8, cy: 8, r: 7, fill: C.silverDark, stroke: C.chassisDark, 'stroke-width': 1 }));
@@ -565,7 +590,6 @@ function makeScrew() {
   return s;
 }
 
-// ─── PANEL SECTION LABEL ───────────────────────────────────────────────────────
 function sectionLabel(text) {
   return el('div', {
     style: {
@@ -577,23 +601,20 @@ function sectionLabel(text) {
   }, text);
 }
 
-// ─── MAIN ASSEMBLY ─────────────────────────────────────────────────────────────
 export default function createPatchView(connection) {
   patchConn = connection;
 
-  // Wire IR loader native functions — these are exposed on window by the
-  // HTML bootstrap (getNativeFunction calls via window.__JUCE__.backend)
   loadCabIRFn  = window._loadCabIR  || null;
   resetCabIRFn = window._resetCabIR || null;
   setCabHPFn   = window._setCabHP   || null;
   setCabLPFn   = window._setCabLP   || null;
+  const getIRInfoFn = window._getIRInfo || null;
 
-  // Pull initial values from DSP
-  const paramKeys = ['param1','param2','param3','param4','param5','param6','param7','param8','param9'];
-  const stateKeys = ['model','gain','bass','mid','treble','presence','volume','cabinet','trim'];
-  paramKeys.forEach((pid, i) => {
-    connection.requestParameterValue(pid);
-  });
+  const paramKeys = ['param1','param2','param3','param4','param5','param6','param7','param8','param9','param10'];
+  const stateKeys = ['model','gain','bass','mid','treble','presence','volume','cabinet','trim','bright'];
+  function requestAllParams() {
+    paramKeys.forEach(pid => connection.requestParameterValue(pid));
+  }
   connection.addAllParameterListener(({ endpointID, value }) => {
     const idx = paramKeys.indexOf(endpointID);
     if (idx < 0) return;
@@ -602,11 +623,11 @@ export default function createPatchView(connection) {
     state[key] = p ? p.fromVal(value) : value;
     if (key === 'model') { refreshModelButtons(); updateLCD(); }
     if (key === 'cabinet') { if (cabLedEl) { cabLedEl.style.background = state.cabinet ? C.ledGreen : C.chassisDark; cabLedEl.style.boxShadow = state.cabinet ? `0 0 8px ${C.ledGreen}` : 'none'; } updateLCD(); }
-    if (root) root.querySelectorAll('[data-knob]').forEach(w => { if (w._key === key) w._draw && w._draw(); });
+    if (key === 'bright') { updateBrightLed(); }
+    if (root) root.querySelectorAll('[data-knob]').forEach(w => { if (w._key === key) w._setValue && w._setValue(state[key]); });
     updateDisplay();
   });
 
-  // ── Build the pedal chassis ─────────────────────────────────────────────────
   root = el('div', {
     style: {
       width: '100%', height: '100%',
@@ -621,7 +642,6 @@ export default function createPatchView(connection) {
     }
   });
 
-  // Brushed metal texture overlay
   const texture = el('div', {
     style: {
       position: 'absolute', inset: 0, pointerEvents: 'none',
@@ -631,7 +651,6 @@ export default function createPatchView(connection) {
   });
   root.appendChild(texture);
 
-  // ── Top bar: logo + screws ───────────────────────────────────────────────────
   const topBar = el('div', {
     style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', zIndex: 1 }
   },
@@ -640,7 +659,6 @@ export default function createPatchView(connection) {
     makeScrew()
   );
 
-  // ── LCD + model grid row ─────────────────────────────────────────────────────
   const lcdRow = el('div', {
     style: { display: 'flex', gap: '16px', alignItems: 'stretch', position: 'relative', zIndex: 1 }
   },
@@ -651,7 +669,6 @@ export default function createPatchView(connection) {
     )
   );
 
-  // ── Main knobs row ───────────────────────────────────────────────────────────
   const knobDefs = [
     { key: 'gain',     label: 'GAIN',     defaultVal: 0.65 },
     { key: 'bass',     label: 'BASS',     defaultVal: 0.50 },
@@ -686,7 +703,6 @@ export default function createPatchView(connection) {
   });
   knobSection.appendChild(knobsInner);
 
-  // ── Bottom row: controls + display ───────────────────────────────────────────
   const bottomRow = el('div', {
     style: { display: 'flex', gap: '12px', alignItems: 'center', position: 'relative', zIndex: 1 }
   },
@@ -694,6 +710,7 @@ export default function createPatchView(connection) {
       el('div', { style: { display: 'flex', flexDirection: 'column', gap: '6px' } },
         el('div', { style: { display: 'flex', gap: '8px' } },
           makeCabToggle(),
+          makeBrightToggle(),
           makeBypassToggle()
         ),
         makeCabIRLoader()
@@ -702,7 +719,6 @@ export default function createPatchView(connection) {
     makeDisplay()
   );
 
-  // ── Bottom screws ────────────────────────────────────────────────────────────
   const bottomBar = el('div', {
     style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', zIndex: 1 }
   },
@@ -717,5 +733,16 @@ export default function createPatchView(connection) {
   root.appendChild(bottomRow);
   root.appendChild(bottomBar);
 
+  requestAllParams();
+  if (getIRInfoFn) {
+    getIRInfoFn().then(info => {
+      if (info && !info.builtin && info.name && irFilenameEl) {
+        const display = info.name.replace(/\.wav$/i, '').toUpperCase().slice(0, 16);
+        irFilenameEl.textContent = display;
+        irFilenameEl.style.color = C.orange;
+      }
+    }).catch(() => {});
+  }
   return root;
 }
+
