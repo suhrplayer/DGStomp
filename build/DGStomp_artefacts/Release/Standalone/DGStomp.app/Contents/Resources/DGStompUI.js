@@ -374,7 +374,7 @@ function makeCabIRLoader() {
       color: C.textDim, fontFamily: 'monospace', fontSize: '10px',
       letterSpacing: '0.08em',
     },
-    title: 'Load WAV cabinet IR',
+    title: 'Load WAVE cabinet IR',
     onClick: () => fileInput.click(),
   }, 'LOAD IR');
 
